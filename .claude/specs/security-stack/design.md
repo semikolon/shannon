@@ -346,12 +346,14 @@ Inspired by Anthropic's Claude Code Security (Observe→Hypothesize→Test→Ref
 - Flags obvious anomalies; anything ambiguous gets picked up by daily Gemini
 - **Critical**: GPT-5-nano is a reasoning model — most tokens go to internal `reasoning_tokens`, not visible output. Use `max_completion_tokens: 2000` (not 300). Does NOT support custom `temperature` or legacy `max_tokens` parameter.
 
-**Daily deep analysis: Gemini 3 Pro** ($1.25/M input, $5/M output, 1M context)
+**Daily deep analysis: Gemini 3.1 Pro** (target) / **Gemini 2.5 Flash** (current, free tier)
 - Full day's logs + CrowdSec decisions + hourly triage flags in single call (~20-50K tokens)
 - Pattern correlation, behavioral anomaly detection, multi-step reasoning
-- ~$0.07/run × 30 runs/month = ~$2.10/month
+- Model configurable via `GEMINI_MODEL` env var in `/etc/shannon-security/env`
+- **Free tier**: Only Flash models available (quota=0 for all Pro models). Enable Google AI billing (~$2/month) for Pro.
+- **Target cost**: ~$0.07/run × 30 runs/month = ~$2.10/month (Pro pricing)
 
-**Total: ~$2.82/month** (budget: $5/month)
+**Total: ~$2.82/month** (budget: $5/month, requires billing for Pro)
 
 ### Hourly Triage Flow (GPT-5-nano)
 
@@ -366,12 +368,12 @@ Cron (hourly) on SHANNON:
      - Clear → log only
 ```
 
-### Daily Deep Analysis Flow (Gemini 3 Pro)
+### Daily Deep Analysis Flow (Gemini)
 
 ```
 Cron (daily, 06:00) on SHANNON:
   1. Collect: last 24h auth.log, syslog, cscli decisions, hourly triage flags
-  2. Send to Gemini 3 Pro with deep analysis prompt (1M context)
+  2. Send to Gemini (configurable model) with deep analysis prompt
   3. Produce: pattern correlation, behavioral anomalies, trend detection
   4. Route: digest → ntfy normal topic → logged for review
   5. Generate escalation prompts for anything actionable

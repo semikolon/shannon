@@ -160,10 +160,14 @@
   - **Gotcha**: GPT-5-nano is a reasoning model — `max_completion_tokens: 300` leaves nothing for output (all goes to `reasoning_tokens`). Need 2000+.
   - **Gotcha**: GPT-5-nano doesn't support `max_tokens` (use `max_completion_tokens`) or custom `temperature` (only default 1).
 
-- [x] **T-33c**: Create daily deep analysis (Gemini 3 Pro)
+- [x] **T-33c**: Create daily deep analysis (Gemini)
   - `/usr/local/lib/shannon-security/daily_analysis.sh` → `/usr/local/bin/shannon-triage-daily`
   - Pattern correlation, behavioral anomalies, trend detection, escalation prompts
   - Saves analyses to `/var/log/shannon-security-analyses/YYYY-MM-DD.json`
+  - **Model**: Configurable via `GEMINI_MODEL` env var. Default `gemini-2.5-flash` (free tier). Set to `gemini-3.1-pro-preview` after enabling billing.
+  - **Gotcha**: Gemini Pro models (3, 3.1) have free tier quota = 0. Requires Google AI billing (~$2/month).
+  - **Gotcha**: `maxOutputTokens: 2000` insufficient for thinking models. Use 8192+.
+  - **Gotcha**: Shell argument limits hit at ~130KB. Use temp files + `jq --rawfile` + `curl -d @file`.
 
 - [x] **T-33d**: Set up cron jobs on SHANNON
   - Hourly: `0 * * * *` → `shannon-triage-hourly`
@@ -178,6 +182,41 @@
 
 ---
 
+## Phase 6.7: Dynamic DNS (Loopia API)
+
+- [x] **T-40**: Create DDNS update script
+  - `/usr/local/lib/shannon-security/ddns_update.py` → `/usr/local/bin/shannon-ddns`
+  - Python 3.13 + built-in `xmlrpc.client` (zero pip dependencies)
+  - Reads WAN IP from `enxc84d4421f975` interface directly (no external HTTP calls)
+  - Updates `shannon.fredrikbranstrom.se` A record via Loopia XMLRPC API (TTL=300)
+  - Cache-based comparison: only calls API on IP change
+  - ntfy notification on IP change (when Dell reachable)
+  - `--status` flag for quick state check, `--force` for manual override
+
+- [x] **T-41**: Deploy systemd timer
+  - `shannon-ddns.timer` / `shannon-ddns.service`
+  - Runs every 5 min with 30s randomized delay, starts 30s after boot
+  - State persisted to `/var/cache/shannon-ddns-state.json`
+
+- [x] **T-42**: Add CLI integration
+  - `shannon ddns status` — reads state file, shows WAN IP, DNS record, timer status
+  - `shannon ddns update [--force]` — wraps Python script, shows result
+  - JSON output supported (`--json`)
+
+- [ ] **T-43**: Add Loopia API credentials
+  - Needs `LOOPIA_USER` and `LOOPIA_PASSWORD` in `/etc/shannon-security/env`
+  - Same API user as Dell's certbot (`/etc/letsencrypt/loopia.ini`)
+  - Also needs `addSubdomain` + `updateZoneRecord` permissions
+  - **Blocked**: Dell unreachable, credentials only stored there
+  - **User action**: Either access Dell or log into Loopia Customer Zone directly
+
+- [ ] **T-44**: Update WireGuard peer configs
+  - After DDNS is working, change endpoint from `94.254.88.116:51820` to `shannon.fredrikbranstrom.se:51820`
+  - Update all 4 peer configs in `/etc/wireguard/peers/`
+  - Regenerate QR codes for mobile devices
+
+---
+
 ## Phase 7: Configuration Git Tracking
 
 - [ ] **T-34**: Create private repo for SHANNON configs
@@ -188,8 +227,10 @@
 
 ## Phase 8: Documentation
 
-- [ ] **T-37**: Update shannon README.md
-- [ ] **T-38**: Update SHANNON section in dotfiles docs
+- [x] **T-37**: Update shannon README.md
+  - Security stack, LLM analysis, DDNS, architecture diagram all current
+- [x] **T-38**: Update SHANNON section in dotfiles docs
+  - SYSTEM_REFERENCE.md DNS table updated with `shannon` DDNS record, stale Dell IP noted
 - [ ] **T-39**: Create peer onboarding guide
 
 ---

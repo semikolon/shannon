@@ -13,7 +13,8 @@ A token-efficient CLI designed for both humans and AI agents to manage DNS, DHCP
 - **DHCP Management**: View leases, add static reservations
 - **Firewall**: Port forwarding, IP blocking
 - **Security Stack**: CrowdSec IDS, AdGuard Home DNS filtering, WireGuard VPN
-- **LLM Security Analysis**: GPT-5-nano hourly triage + Gemini 3 Pro daily deep analysis (~$3/month)
+- **LLM Security Analysis**: GPT-5-nano hourly triage + Gemini 2.5 Flash daily deep analysis (~$3/month)
+- **Dynamic DNS**: Auto-updates `shannon.fredrikbranstrom.se` via Loopia API on IP change
 - **Dual Output**: Plain text for humans, `--json` for AI agents
 - **Location-Aware**: Works locally on SHANNON or remotely via SSH
 
@@ -73,6 +74,11 @@ shannon sec report          # View recent findings
 # VPN
 shannon vpn peers           # WireGuard peers with handshake status
 shannon vpn status          # WireGuard interface status
+
+# Dynamic DNS
+shannon ddns status         # WAN IP, DNS record, timer status
+shannon ddns update         # Check and update if IP changed
+shannon ddns update --force # Force DNS update
 ```
 
 ### AI Agent Usage
@@ -102,9 +108,12 @@ shannon CLI
 ├── sec            → CrowdSec + AdGuard adapters
 │   ├── status     → combined health (AdGuard + CrowdSec + WireGuard)
 │   └── blocks     → active CrowdSec decisions
-└── vpn            → WireGuard adapter
-    ├── peers      → peer list with handshake status
-    └── status     → interface overview
+├── vpn            → WireGuard adapter
+│   ├── peers      → peer list with handshake status
+│   └── status     → interface overview
+└── ddns           → Dynamic DNS (Loopia API)
+    ├── status     → WAN IP, DNS record, timer
+    └── update     → check and update if changed
 ```
 
 ## Security Stack
@@ -126,7 +135,7 @@ dnsmasq remains for DHCP only (`port=0`). All DNS queries go through AdGuard Hom
 Dual-layer approach complementing CrowdSec's pattern matching with LLM semantic reasoning:
 
 - **Hourly**: GPT-5-nano triage (`/usr/local/bin/shannon-triage-hourly`) — categorizes critical/normal/clear
-- **Daily**: Gemini 3 Pro deep analysis (`/usr/local/bin/shannon-triage-daily`) — pattern correlation, behavioral anomalies, trend detection
+- **Daily**: Gemini 2.5 Flash deep analysis (`/usr/local/bin/shannon-triage-daily`) — pattern correlation, behavioral anomalies, trend detection
 
 Results saved to `/var/log/shannon-security-analyses/`. Critical findings route to ntfy urgent topic.
 
@@ -134,7 +143,21 @@ Results saved to `/var/log/shannon-security-analyses/`. Critical findings route 
 
 SHANNON CrowdSec → ntfy server (Dell) → ntfy-bridge (Mac) → TTS daemon → Ruby narrates.
 
-**Note**: Dell currently unreachable at 192.168.4.84 (likely needs network config update from Deco-era static IP).
+**Note**: Dell currently unreachable at 192.168.4.84 (needs network config update post-Huddinge move).
+
+### Dynamic DNS
+
+`shannon.fredrikbranstrom.se` auto-updated via Loopia XMLRPC API. Python script reads WAN IP directly from interface (zero external calls), updates DNS only on change. systemd timer every 5 min.
+
+| Component | Path |
+|-----------|------|
+| Update script | `/usr/local/lib/shannon-security/ddns_update.py` |
+| Symlink | `/usr/local/bin/shannon-ddns` |
+| Timer | `shannon-ddns.timer` (5 min) |
+| State | `/var/cache/shannon-ddns-state.json` |
+| Credentials | `/etc/shannon-security/env` (`LOOPIA_USER`, `LOOPIA_PASSWORD`) |
+
+**WAN interface**: `enxc84d4421f975` (USB ethernet, DHCP lease from Bahnhof). IP is dynamic — DDNS essential for WireGuard endpoint stability.
 
 ## Configuration
 
