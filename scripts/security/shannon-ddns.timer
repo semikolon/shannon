@@ -1,0 +1,10 @@
+[Unit]
+Description=SHANNON DDNS update every 5 minutes
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=5min
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target

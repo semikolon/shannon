@@ -1,0 +1,8 @@
+[Unit]
+Description=Update SHANNON DDNS record at Loopia
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/shannon-ddns

@@ -1,0 +1,19 @@
+type: http
+name: http_default
+log_level: info
+
+format: |
+  {{- range . -}}
+  {{- $alert := . -}}
+  {{- range .Decisions -}}
+  CrowdSec ban: {{ .Value }} blocked for {{ .Scenario }} ({{ .Duration }})
+  {{- end -}}
+  {{- end -}}
+
+url: http://192.168.4.84:8099/shannon-security
+
+method: POST
+
+headers:
+  Content-Type: "text/plain"
+
