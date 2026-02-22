@@ -2,15 +2,18 @@
 
 Unified router management CLI for Rock Pi 4B SE (SHANNON).
 
-A token-efficient CLI designed for both humans and AI agents to manage DNS, DHCP, firewall, and security on a home router.
+A token-efficient CLI designed for both humans and AI agents to manage DNS, DHCP, firewall, VPN, and security on a home router.
+
+**v0.1.0** deployed on SHANNON at `/usr/local/bin/shannon`. Security stack (AdGuard Home + CrowdSec + WireGuard) installed and operational.
 
 ## Features
 
-- **System Health**: `shannon status` and `shannon doctor` for diagnostics
+- **System Health**: `shannon status` overview, `shannon doctor` diagnostics
 - **DNS Management**: Add/remove/list local DNS records
 - **DHCP Management**: View leases, add static reservations
 - **Firewall**: Port forwarding, IP blocking
-- **Security Analysis**: LLM-based log analysis (coming soon)
+- **Security Stack**: CrowdSec IDS, AdGuard Home DNS filtering, WireGuard VPN
+- **LLM Security Analysis**: GPT-5-nano hourly triage + Gemini 3 Pro daily deep analysis (~$3/month)
 - **Dual Output**: Plain text for humans, `--json` for AI agents
 - **Location-Aware**: Works locally on SHANNON or remotely via SSH
 
@@ -42,7 +45,7 @@ alias shannon='ssh shannon shannon'
 ```bash
 # System health
 shannon status              # Overview (WAN IP, memory, services)
-shannon status doctor       # Run diagnostic checks
+shannon doctor              # Run diagnostic checks
 
 # DNS management
 shannon dns list            # List all DNS records
@@ -61,9 +64,15 @@ shannon fw unforward 8080
 shannon fw block 1.2.3.4
 shannon fw unblock 1.2.3.4
 
-# Security (coming soon)
+# Security
+shannon sec status          # Health of AdGuard, CrowdSec, WireGuard
+shannon sec blocks          # Active CrowdSec decisions (blocked IPs)
 shannon sec scan            # Run security analysis
 shannon sec report          # View recent findings
+
+# VPN
+shannon vpn peers           # WireGuard peers with handshake status
+shannon vpn status          # WireGuard interface status
 ```
 
 ### AI Agent Usage
@@ -85,12 +94,47 @@ shannon fw forward 8080 192.168.4.84:80 --yes
 
 ```
 shannon CLI
-├── status/doctor  → sysinfo + systemctl
+├── status         → sysinfo + systemctl (5 services)
+├── doctor         → diagnostic checks (top-level)
 ├── dns            → dnsmasq config parsing
 ├── dhcp           → dnsmasq leases + dhcp-host
-├── fw             → iptables/nftables
-└── sec            → GPT-5-mini log analysis (TODO)
+├── fw             → nftables rules
+├── sec            → CrowdSec + AdGuard adapters
+│   ├── status     → combined health (AdGuard + CrowdSec + WireGuard)
+│   └── blocks     → active CrowdSec decisions
+└── vpn            → WireGuard adapter
+    ├── peers      → peer list with handshake status
+    └── status     → interface overview
 ```
+
+## Security Stack
+
+Deployed and running. Specs at `.claude/specs/security-stack/`. RAM: ~438 MB total (11.4% of 4 GB).
+
+### Components
+
+| Service | Port | RAM | Purpose |
+|---------|------|-----|---------|
+| AdGuard Home | 53 (DNS), 3000 (web) | ~105 MB | DNS filtering, 507K+ blocklist rules (OISD + AdGuard default), DoH upstream (Cloudflare + Quad9) |
+| CrowdSec | — | ~88 MB | IDS with nftables bouncer, SSH monitoring, community blocklist |
+| WireGuard | 51820 | ~0 MB | VPN (kernel-space), 4 peers configured |
+
+dnsmasq remains for DHCP only (`port=0`). All DNS queries go through AdGuard Home.
+
+### LLM Security Analysis (~$3/month)
+
+Dual-layer approach complementing CrowdSec's pattern matching with LLM semantic reasoning:
+
+- **Hourly**: GPT-5-nano triage (`/usr/local/bin/shannon-triage-hourly`) — categorizes critical/normal/clear
+- **Daily**: Gemini 3 Pro deep analysis (`/usr/local/bin/shannon-triage-daily`) — pattern correlation, behavioral anomalies, trend detection
+
+Results saved to `/var/log/shannon-security-analyses/`. Critical findings route to ntfy urgent topic.
+
+### Alert Pipeline
+
+SHANNON CrowdSec → ntfy server (Dell) → ntfy-bridge (Mac) → TTS daemon → Ruby narrates.
+
+**Note**: Dell currently unreachable at 192.168.4.84 (likely needs network config update from Deco-era static IP).
 
 ## Configuration
 
@@ -98,13 +142,19 @@ Default paths (on SHANNON):
 - dnsmasq config: `/etc/dnsmasq.conf`
 - Custom DNS: `/etc/dnsmasq.d/custom.conf`
 - DHCP leases: `/var/lib/misc/dnsmasq.leases`
-- iptables rules: `/etc/iptables/rules.v4`
+- nftables rules: managed by CrowdSec bouncer + WireGuard PostUp/PostDown
+- WireGuard: `/etc/wireguard/wg0.conf`, peer configs in `/etc/wireguard/peers/`
+- AdGuard Home: `/opt/AdGuardHome/AdGuardHome.yaml`
+- CrowdSec: `/etc/crowdsec/config.yaml`, notifications in `/etc/crowdsec/notifications/`
+- LLM scripts: `/usr/local/lib/shannon-security/`, API keys in `/etc/shannon-security/env`
+- LLM logs: `/var/log/shannon-llm-triage.log`, analyses in `/var/log/shannon-security-analyses/`
 
 ## Requirements
 
-- SHANNON running Armbian with dnsmasq
+- SHANNON running Armbian Trixie (kernel 6.18, ARM64) with dnsmasq
 - SSH access configured (`~/.ssh/config` with `Host shannon`)
-- Root or sudo access on SHANNON
+- Root access on SHANNON
+- Public IP on WAN interface (no port forwarding needed — SHANNON is the border device)
 
 ## License
 
