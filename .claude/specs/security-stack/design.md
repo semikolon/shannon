@@ -346,12 +346,12 @@ Inspired by Anthropic's Claude Code Security (Observe→Hypothesize→Test→Ref
 - Flags obvious anomalies; anything ambiguous gets picked up by daily Gemini
 - **Critical**: GPT-5-nano is a reasoning model — most tokens go to internal `reasoning_tokens`, not visible output. Use `max_completion_tokens: 2000` (not 300). Does NOT support custom `temperature` or legacy `max_tokens` parameter.
 
-**Daily deep analysis: Gemini 3.1 Pro** (target) / **Gemini 2.5 Flash** (current, free tier)
+**Daily deep analysis: Gemini 3.1 Pro** (active, billing enabled Feb 2026)
 - Full day's logs + CrowdSec decisions + hourly triage flags in single call (~20-50K tokens)
 - Pattern correlation, behavioral anomaly detection, multi-step reasoning
 - Model configurable via `GEMINI_MODEL` env var in `/etc/shannon-security/env`
-- **Free tier**: Only Flash models available (quota=0 for all Pro models). Enable Google AI billing (~$2/month) for Pro.
-- **Target cost**: ~$0.07/run × 30 runs/month = ~$2.10/month (Pro pricing)
+- **Note**: Free tier has quota=0 for all Pro models. Billing required (~$2/month).
+- **Cost**: ~$0.07/run × 30 runs/month = ~$2.10/month
 
 **Total: ~$2.82/month** (budget: $5/month, requires billing for Pro)
 

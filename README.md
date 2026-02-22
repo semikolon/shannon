@@ -13,7 +13,7 @@ A token-efficient CLI designed for both humans and AI agents to manage DNS, DHCP
 - **DHCP Management**: View leases, add static reservations
 - **Firewall**: Port forwarding, IP blocking
 - **Security Stack**: CrowdSec IDS, AdGuard Home DNS filtering, WireGuard VPN
-- **LLM Security Analysis**: GPT-5-nano hourly triage + Gemini 2.5 Flash daily deep analysis (~$3/month)
+- **LLM Security Analysis**: GPT-5-nano hourly triage + Gemini 3.1 Pro daily deep analysis (~$3/month)
 - **Dynamic DNS**: Auto-updates `shannon.fredrikbranstrom.se` via Loopia API on IP change
 - **Dual Output**: Plain text for humans, `--json` for AI agents
 - **Location-Aware**: Works locally on SHANNON or remotely via SSH
@@ -135,7 +135,7 @@ dnsmasq remains for DHCP only (`port=0`). All DNS queries go through AdGuard Hom
 Dual-layer approach complementing CrowdSec's pattern matching with LLM semantic reasoning:
 
 - **Hourly**: GPT-5-nano triage (`/usr/local/bin/shannon-triage-hourly`) — categorizes critical/normal/clear
-- **Daily**: Gemini 2.5 Flash deep analysis (`/usr/local/bin/shannon-triage-daily`) — pattern correlation, behavioral anomalies, trend detection
+- **Daily**: Gemini 3.1 Pro deep analysis (`/usr/local/bin/shannon-triage-daily`) — pattern correlation, behavioral anomalies, trend detection
 
 Results saved to `/var/log/shannon-security-analyses/`. Critical findings route to ntfy urgent topic.
 

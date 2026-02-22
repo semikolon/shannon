@@ -164,7 +164,7 @@
   - `/usr/local/lib/shannon-security/daily_analysis.sh` → `/usr/local/bin/shannon-triage-daily`
   - Pattern correlation, behavioral anomalies, trend detection, escalation prompts
   - Saves analyses to `/var/log/shannon-security-analyses/YYYY-MM-DD.json`
-  - **Model**: Configurable via `GEMINI_MODEL` env var. Default `gemini-2.5-flash` (free tier). Set to `gemini-3.1-pro-preview` after enabling billing.
+  - **Model**: Configurable via `GEMINI_MODEL` env var. Set to `gemini-3.1-pro-preview` (billing enabled Feb 22, 2026).
   - **Gotcha**: Gemini Pro models (3, 3.1) have free tier quota = 0. Requires Google AI billing (~$2/month).
   - **Gotcha**: `maxOutputTokens: 2000` insufficient for thinking models. Use 8192+.
   - **Gotcha**: Shell argument limits hit at ~130KB. Use temp files + `jq --rawfile` + `curl -d @file`.
