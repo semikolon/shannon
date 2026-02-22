@@ -14,7 +14,7 @@ use anyhow::Result;
 use clap::Parser;
 use tracing::error;
 
-use cli::{Cli, Commands, DhcpAction, DnsAction, FwAction, SecAction, VpnAction};
+use cli::{Cli, Commands, DdnsAction, DhcpAction, DnsAction, FwAction, SecAction, VpnAction};
 
 fn main() {
     // Initialize logging (stderr only, preserve stdout for output)
@@ -80,6 +80,11 @@ fn run(cli: Cli) -> Result<()> {
         Commands::Vpn { action } => match action {
             VpnAction::Peers => commands::vpn::peers(cli.json),
             VpnAction::Status => commands::vpn::status(cli.json),
+        },
+
+        Commands::Ddns { action } => match action {
+            DdnsAction::Status => commands::ddns::status(cli.json),
+            DdnsAction::Update { force } => commands::ddns::update(force, cli.json),
         },
     }
 }

@@ -60,6 +60,12 @@ pub enum Commands {
         #[command(subcommand)]
         action: VpnAction,
     },
+
+    /// Dynamic DNS management (shannon.fredrikbranstrom.se)
+    Ddns {
+        #[command(subcommand)]
+        action: DdnsAction,
+    },
 }
 
 // DNS subcommands
@@ -171,4 +177,18 @@ pub enum VpnAction {
 
     /// Show WireGuard interface status
     Status,
+}
+
+// DDNS subcommands
+#[derive(Subcommand)]
+pub enum DdnsAction {
+    /// Show current DDNS status (WAN IP, DNS record, timer)
+    Status,
+
+    /// Trigger a DNS update check
+    Update {
+        /// Force update even if IP hasn't changed
+        #[arg(long)]
+        force: bool,
+    },
 }
