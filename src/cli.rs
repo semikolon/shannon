@@ -25,11 +25,11 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// System health and diagnostics
-    Status {
-        #[command(subcommand)]
-        action: Option<StatusAction>,
-    },
+    /// System health overview (WAN IP, memory, services)
+    Status,
+
+    /// Run diagnostic checks (DNS, gateway, internet, services)
+    Doctor,
 
     /// DNS record management
     Dns {
@@ -49,18 +49,17 @@ pub enum Commands {
         action: FwAction,
     },
 
-    /// Security analysis
+    /// Security stack (CrowdSec, AdGuard, WireGuard)
     Sec {
         #[command(subcommand)]
         action: SecAction,
     },
-}
 
-// Status subcommands
-#[derive(Subcommand)]
-pub enum StatusAction {
-    /// Run diagnostic checks (DNS, gateway, internet)
-    Doctor,
+    /// VPN (WireGuard) management
+    Vpn {
+        #[command(subcommand)]
+        action: VpnAction,
+    },
 }
 
 // DNS subcommands
@@ -147,6 +146,12 @@ pub enum FwAction {
 // Security subcommands
 #[derive(Subcommand)]
 pub enum SecAction {
+    /// Combined security stack status (AdGuard + CrowdSec + WireGuard)
+    Status,
+
+    /// Show active CrowdSec blocks (banned IPs)
+    Blocks,
+
     /// Run security analysis on logs
     Scan,
 
@@ -156,4 +161,14 @@ pub enum SecAction {
         #[arg(short = 'n', long, default_value = "24")]
         hours: u32,
     },
+}
+
+// VPN subcommands
+#[derive(Subcommand)]
+pub enum VpnAction {
+    /// List WireGuard peers with connection status
+    Peers,
+
+    /// Show WireGuard interface status
+    Status,
 }

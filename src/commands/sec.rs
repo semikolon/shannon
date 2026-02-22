@@ -1,10 +1,78 @@
-//! Security analysis commands
+//! Security analysis and status commands
 
 use anyhow::Result;
 use serde::Serialize;
 use std::fmt::Display;
 
+use crate::adapters::{adguard, crowdsec, wireguard};
 use crate::output::print_output;
+
+/// Combined security stack status
+#[derive(Debug, Serialize)]
+pub struct SecurityStatus {
+    pub adguard: adguard::AdguardStatus,
+    pub crowdsec: crowdsec::CrowdsecStatus,
+    pub wireguard: wireguard::WireguardStatus,
+}
+
+impl Display for SecurityStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Security Stack Status")?;
+        writeln!(f, "=====================")?;
+        write!(f, "{}", self.adguard)?;
+        write!(f, "{}", self.crowdsec)?;
+        write!(f, "{}", self.wireguard)?;
+        Ok(())
+    }
+}
+
+/// Show combined security status
+pub fn status(json: bool) -> Result<()> {
+    let result = SecurityStatus {
+        adguard: adguard::get_status()?,
+        crowdsec: crowdsec::get_status()?,
+        wireguard: wireguard::get_status()?,
+    };
+
+    print_output(&result, json);
+    Ok(())
+}
+
+/// Show CrowdSec active decisions (blocked IPs)
+pub fn blocks(json: bool) -> Result<()> {
+    let decisions = crowdsec::list_decisions()?;
+
+    let result = BlocksResult {
+        count: decisions.len() as u32,
+        decisions,
+    };
+
+    print_output(&result, json);
+    Ok(())
+}
+
+#[derive(Debug, Serialize)]
+pub struct BlocksResult {
+    pub count: u32,
+    pub decisions: Vec<crowdsec::CrowdsecDecision>,
+}
+
+impl Display for BlocksResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "CrowdSec Active Blocks")?;
+        writeln!(f, "======================")?;
+        if self.decisions.is_empty() {
+            writeln!(f, "No active blocks.")?;
+        } else {
+            writeln!(f, "{} blocked IPs:", self.count)?;
+            writeln!(f)?;
+            for decision in &self.decisions {
+                write!(f, "{}", decision)?;
+            }
+        }
+        Ok(())
+    }
+}
 
 /// Security finding from log analysis
 #[derive(Debug, Serialize, Clone)]
@@ -61,37 +129,23 @@ impl Display for ScanResult {
     }
 }
 
-/// Run security scan
+/// Run security scan (LLM-based analysis — placeholder)
 pub fn scan(json: bool) -> Result<()> {
-    // TODO: Implement actual log collection and LLM analysis
-    // For now, return a placeholder result
-
     let result = ScanResult {
         findings: vec![],
         logs_analyzed: 0,
         time_window_hours: 1,
     };
 
-    // TODO: When implemented:
-    // 1. Collect logs from configured sources
-    // 2. Send to GPT-5-mini for analysis
-    // 3. Parse findings
-    // 4. Route notifications (TTS for critical, ntfy for medium)
-    // 5. Store in findings.jsonl
-
     print_output(&result, json);
-
     println!("\nNote: LLM-based security analysis not yet implemented.");
-    println!("Run 'shannon sec report' to view any stored findings.");
+    println!("Run 'shannon sec blocks' to view active CrowdSec decisions.");
 
     Ok(())
 }
 
 /// Show recent security findings
 pub fn report(hours: u32, json: bool) -> Result<()> {
-    // TODO: Read from ~/.shannon/findings.jsonl
-    // Filter by time window
-
     let result = ScanResult {
         findings: vec![],
         logs_analyzed: 0,
@@ -99,7 +153,6 @@ pub fn report(hours: u32, json: bool) -> Result<()> {
     };
 
     print_output(&result, json);
-
     println!("\nNote: No findings stored yet. Run 'shannon sec scan' first.");
 
     Ok(())

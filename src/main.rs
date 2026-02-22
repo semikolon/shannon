@@ -1,7 +1,7 @@
 //! shannon - Unified router management CLI for Rock Pi 4B SE
 //!
 //! A token-efficient CLI for both humans and AI agents to manage
-//! DNS, DHCP, firewall, and security on the SHANNON router.
+//! DNS, DHCP, firewall, security, and VPN on the SHANNON router.
 
 mod adapters;
 mod cli;
@@ -14,7 +14,7 @@ use anyhow::Result;
 use clap::Parser;
 use tracing::error;
 
-use cli::{Cli, Commands, DhcpAction, DnsAction, FwAction, SecAction, StatusAction};
+use cli::{Cli, Commands, DhcpAction, DnsAction, FwAction, SecAction, VpnAction};
 
 fn main() {
     // Initialize logging (stderr only, preserve stdout for output)
@@ -37,10 +37,8 @@ fn main() {
 
 fn run(cli: Cli) -> Result<()> {
     match cli.command {
-        Commands::Status { action } => match action {
-            None => commands::status::status(cli.json),
-            Some(StatusAction::Doctor) => commands::status::doctor(cli.json),
-        },
+        Commands::Status => commands::status::status(cli.json),
+        Commands::Doctor => commands::status::doctor(cli.json),
 
         Commands::Dns { action } => match action {
             DnsAction::List => commands::dns::list(cli.json),
@@ -73,8 +71,15 @@ fn run(cli: Cli) -> Result<()> {
         },
 
         Commands::Sec { action } => match action {
+            SecAction::Status => commands::sec::status(cli.json),
+            SecAction::Blocks => commands::sec::blocks(cli.json),
             SecAction::Scan => commands::sec::scan(cli.json),
             SecAction::Report { hours } => commands::sec::report(hours, cli.json),
+        },
+
+        Commands::Vpn { action } => match action {
+            VpnAction::Peers => commands::vpn::peers(cli.json),
+            VpnAction::Status => commands::vpn::status(cli.json),
         },
     }
 }

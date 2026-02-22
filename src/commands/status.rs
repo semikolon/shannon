@@ -47,7 +47,7 @@ pub fn status(json: bool) -> Result<()> {
     let wan_ip = get_wan_ip().unwrap_or_else(|_| "unknown".to_string());
     let metrics = get_system_metrics()?;
 
-    let services = vec!["dnsmasq", "ssh"]
+    let services = vec!["dnsmasq", "ssh", "crowdsec", "AdGuardHome", "wg-quick@wg0"]
         .into_iter()
         .map(|name| ServiceStatus {
             name: name.to_string(),
