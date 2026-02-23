@@ -5,7 +5,7 @@
 - **Estimated scope**: Medium (4-6 hours installation + CLI integration)
 - **Priority order**: CrowdSec first (user preference), then AdGuard Home, then WireGuard
 - **Cut first if needed**: CLI integration (can use native tools)
-- **Rollback safety**: IP-based SSH (192.168.4.1) survives all DNS changes
+- **Rollback safety**: SSH on LAN (192.168.4.1) always reachable from local network
 
 ---
 
@@ -57,9 +57,11 @@
   - OISD (358K rules) + AdGuard default (149K rules) = 507K+ rules
 
 - [x] **T-13**: Disable dnsmasq DNS
-  - Added `port=0` and `dhcp-option=6,192.168.4.1` to `/etc/dnsmasq.conf`
+  - Added `port=0` to `/etc/dnsmasq.conf`
+  - DNS server option already existed at line 28 (`dhcp-option=option:dns-server,192.168.4.1`)
   - Fixed `/etc/resolv.conf` to point to 192.168.4.1 (was 127.0.0.1)
   - Installed `dnsutils` for `dig`
+  - **Gotcha**: Adding `dhcp-option=6,192.168.4.1` created a duplicate — option 6 IS `dns-server`. Fixed Feb 23 by commenting out the duplicate.
 
 - [x] **T-14**: Verify DNS cutover
   - google.com resolves normally, doubleclick.net blocked (0.0.0.0)
@@ -94,6 +96,7 @@
   - Generate QR: `qrencode -t ansiutf8 < /etc/wireguard/peers/iphone.conf`
   - Import in WireGuard app, test on mobile data
   - **User action required**
+  - **Priority**: HIGH — SSH now restricted to LAN+VPN, VPN must be verified
 
 ---
 
@@ -178,7 +181,11 @@
 - [x] **T-33e**: Verify two-tier operation
   - Hourly triage verified: category=normal, SSH brute-force detected and mitigated, legitimate admin access confirmed
   - First entry in daily digest: `/var/log/shannon-daily-digest.jsonl`
-  - Daily analysis pending next 06:00 UTC run
+  - Daily analysis verified with Gemini 3.1 Pro (Feb 23): severity yellow, CrowdSec crash + auto-recovery correctly identified
+
+- [x] **T-33f**: Enrich log collection with system state context
+  - Added to `collect_logs.sh`: service states (active/failed + `active_since`), systemd lifecycle events (Started/Stopped/Failed), system resources (memory, load, temp, disk)
+  - Purpose: LLM can now distinguish "crashed and down" from "crashed but self-healed" — first Gemini analysis without this context over-reported CrowdSec crash severity
 
 ---
 
@@ -197,6 +204,7 @@
   - `shannon-ddns.timer` / `shannon-ddns.service`
   - Runs every 5 min with 30s randomized delay, starts 30s after boot
   - State persisted to `/var/cache/shannon-ddns-state.json`
+  - **Currently disabled** (Feb 23): Timer stopped to prevent log spam — no Loopia credentials yet. Re-enable: `systemctl enable --now shannon-ddns.timer`
 
 - [x] **T-42**: Add CLI integration
   - `shannon ddns status` — reads state file, shows WAN IP, DNS record, timer status
@@ -209,6 +217,7 @@
   - Also needs `addSubdomain` + `updateZoneRecord` permissions
   - **Blocked**: Dell unreachable, credentials only stored there
   - **User action**: Either access Dell or log into Loopia Customer Zone directly
+  - After adding: `systemctl enable --now shannon-ddns.timer`
 
 - [ ] **T-44**: Update WireGuard peer configs
   - After DDNS is working, change endpoint from `94.254.88.116:51820` to `shannon.fredrikbranstrom.se:51820`
@@ -217,21 +226,66 @@
 
 ---
 
+## Phase 6.8: SSH Hardening
+
+- [x] **T-45**: Disable password authentication
+  - Root had a password set (`passwd -S root` → `P`), password auth was enabled by default
+  - Zero password logins ever occurred (verified via full journal scan)
+  - Created `/etc/ssh/sshd_config.d/hardening.conf`: `PasswordAuthentication no`, `KbdInteractiveAuthentication no`
+
+- [x] **T-46**: Restrict SSH to LAN + VPN only
+  - Added `ListenAddress 192.168.4.1` + `ListenAddress 10.0.0.1` to hardening.conf
+  - SSH no longer reachable from public internet — eliminates all brute-force noise
+  - LAN IP is static (netplan `10-router.yaml`), no risk of DHCP reassignment
+  - **Prerequisite for remote access**: VPN must work (T-21)
+
+---
+
 ## Phase 7: Configuration Git Tracking
 
-- [ ] **T-34**: Create private repo for SHANNON configs
-- [ ] **T-35**: Set up config sync
+- [x] **T-47**: Track security scripts in shannon repo
+  - All scripts from `/usr/local/lib/shannon-security/` committed to `scripts/security/`
+  - Systemd units for DDNS committed
+  - CrowdSec notification config committed to `configs/`
+  - SSH hardening config committed to `configs/`
+  - Checksums verified: repo is byte-identical to deployed versions
+
+- [ ] **T-34**: Create private repo for SHANNON system configs
+  - For sensitive configs not suitable for public repo (wg keys, full system configs)
+  - Or: use encrypted secrets in existing repo
+
+- [ ] **T-35**: Set up config sync workflow
+  - Script or Makefile to deploy from repo to SHANNON
+
 - [ ] **T-36**: Document restore procedure
+  - From-scratch rebuild guide using repo as source
 
 ---
 
 ## Phase 8: Documentation
 
 - [x] **T-37**: Update shannon README.md
-  - Security stack, LLM analysis, DDNS, architecture diagram all current
+  - Security stack, LLM analysis, DDNS, SSH hardening, architecture diagram all current
+
 - [x] **T-38**: Update SHANNON section in dotfiles docs
-  - SYSTEM_REFERENCE.md DNS table updated with `shannon` DDNS record, stale Dell IP noted
+  - SYSTEM_REFERENCE.md: DNS table, security stack status (installed and operational), stale Dell IP noted, GPT-5-nano (not mini), Gemini 3.1 Pro
+
 - [ ] **T-39**: Create peer onboarding guide
+
+---
+
+## Phase 9: DNS Cleanup (blocked on Dell)
+
+- [ ] **T-48**: Update `*.fredrikbranstrom.se` wildcard DNS
+  - Currently points to `213.164.219.201` (old Huddinge/Dell IP, stale)
+  - All subdomains (brf-auto, blobulator, registry) resolve to dead IP
+  - Need Dell's new Sarpetorp IP, or remove wildcard and set explicit records
+  - **Blocked**: Dell unreachable
+
+- [ ] **T-49**: Verify Dell network config
+  - Dell likely still has Deco-era IP config from Huddinge
+  - Needs manual check — power cycle or console access
+  - Unblocks: T-32 (ntfy), T-33 (escalation), T-43 (Loopia creds), T-48 (DNS wildcard)
 
 ---
 
@@ -240,26 +294,30 @@
 Before marking Phase 2 complete:
 
 - [ ] **V-1**: Ads blocked on all network devices (YouTube, web)
-- [ ] **V-2**: `cscli metrics` shows active scenarios
-- [ ] **V-3**: `cscli decisions list` shows community blocklist entries
+- [x] **V-2**: `cscli metrics` shows active scenarios — scenarios loaded, 4 alerts in first 24h
+- [ ] **V-3**: `cscli decisions list` shows community blocklist entries — bans active but short TTL, currently 0 active (normal for low traffic)
 - [ ] **V-4**: WireGuard connects from mobile data
 - [ ] **V-5**: `ssh shannon` works over VPN tunnel
 - [x] **V-6**: DNS resolution works (AdGuard serving) — verified with dig
 - [x] **V-7**: DHCP still working (dnsmasq) — 18 active leases
 - [x] **V-8**: `shannon sec status` shows all green — all 3 services active
-- [x] **V-9**: RAM usage <1 GB total — 438 MB (11.4%)
-- [ ] **V-10**: Configs committed to git
+- [x] **V-9**: RAM usage <1 GB total — 449 MB (12%)
+- [x] **V-10**: Configs committed to git — scripts + configs in shannon repo, checksums verified
 
 ---
 
 ## Implementation Notes
 
-- **RAM budget**: 438 MB total (CrowdSec ~88 MB, AdGuard ~105 MB, WireGuard ~0 MB). Well under 1 GB target.
+- **RAM budget**: 449 MB total (CrowdSec ~88 MB, AdGuard ~105 MB, WireGuard ~0 MB). Well under 1 GB target.
 - **No port forwarding needed**: SHANNON has public IP directly on WAN interface. Spec assumption about Deco/ONT forwarding was wrong.
-- **Dell unreachable**: 192.168.4.84 returns ARP FAILED from SHANNON. Dell likely still has Deco-era network config. Needs manual check on Dell side.
+- **Dell unreachable**: 192.168.4.84 (LAN) and 213.164.219.201 (old public IP) both unreachable from SHANNON. Likely still has Deco-era network config. Blocks: ntfy notifications, Loopia credentials, DNS wildcard update.
 - **CrowdSec plugin naming**: Debian-packaged plugins in `/usr/lib/crowdsec/plugins/` named `http` instead of `notification-http`. Required manual rename.
+- **CrowdSec crash** (Feb 22 16:03): Crashed once, auto-restarted via systemd at 16:04. Root cause unknown. Stable since (17h+). Monitor.
 - **Cargo PATH on SHANNON**: Non-interactive SSH doesn't source `.cargo/env`. Use `source /root/.cargo/env && cargo build` for builds.
 - **WireGuard key parsing**: Base64 keys end with `=` — can't use `split('=')` for config parsing. Use `find('=')` position + slice.
 - **SSH hardened** (Feb 23): Password auth disabled + listen restricted to LAN+VPN only. Root had a password set but zero password logins ever occurred. Config: `/etc/ssh/sshd_config.d/hardening.conf`.
-- **Gemini billing** (Feb 23): Google AI billing enabled. `GEMINI_MODEL=gemini-3.1-pro-preview` active. First analysis ran successfully (severity yellow, SSH brute-force + CrowdSec auto-recovery).
+- **Gemini billing** (Feb 23): Google AI billing enabled via Google Cloud Console (hard to find). `GEMINI_MODEL=gemini-3.1-pro-preview` active. First analysis ran successfully.
 - **Log collection enriched** (Feb 23): `collect_logs.sh` now includes service states, restart history, system resources (RAM/load/temp/disk). Gives LLM context to distinguish crashes from self-healing.
+- **DDNS timer disabled** (Feb 23): Stopped to prevent log spam (98 failures/day). Re-enable after adding Loopia credentials (T-43).
+- **Duplicate dhcp-option 6** (Feb 23): `dhcp-option=option:dns-server` (line 28) and `dhcp-option=6` (line 46) are the same thing. Duplicate commented out. Warning eliminated.
+- **Port 2222 forward**: nftables still has `WAN:2222 → 192.168.4.84:22` rule (Dell SSH forward from pre-Sarpetorp). Harmless since Dell is unreachable, but should be cleaned up when Dell surfaces.
