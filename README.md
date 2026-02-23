@@ -118,7 +118,7 @@ shannon CLI
 
 ## Security Stack
 
-Deployed and running. Specs at `.claude/specs/security-stack/`. RAM: ~438 MB total (11.4% of 4 GB).
+Deployed and running. Specs at `.claude/specs/security-stack/`. RAM: ~449 MB total (12% of 4 GB).
 
 ### Components
 
@@ -147,13 +147,13 @@ SHANNON CrowdSec → ntfy server (Dell) → ntfy-bridge (Mac) → TTS daemon →
 
 ### Dynamic DNS
 
-`shannon.fredrikbranstrom.se` auto-updated via Loopia XMLRPC API. Python script reads WAN IP directly from interface (zero external calls), updates DNS only on change. systemd timer every 5 min.
+`shannon.fredrikbranstrom.se` auto-updated via Loopia XMLRPC API. Python script reads WAN IP directly from interface (zero external calls), updates DNS only on change. Timer disabled — awaiting Loopia API credentials.
 
 | Component | Path |
 |-----------|------|
 | Update script | `/usr/local/lib/shannon-security/ddns_update.py` |
 | Symlink | `/usr/local/bin/shannon-ddns` |
-| Timer | `shannon-ddns.timer` (5 min) |
+| Timer | `shannon-ddns.timer` (5 min, currently disabled) |
 | State | `/var/cache/shannon-ddns-state.json` |
 | Credentials | `/etc/shannon-security/env` (`LOOPIA_USER`, `LOOPIA_PASSWORD`) |
 

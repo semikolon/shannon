@@ -283,9 +283,17 @@
   - **Blocked**: Dell unreachable
 
 - [ ] **T-49**: Verify Dell network config
-  - Dell likely still has Deco-era IP config from Huddinge
-  - Needs manual check — power cycle or console access
+  - Dell is cabled to laundry room switch but NOT in SHANNON's DHCP lease table
+  - DHCP reservation exists (`F8:B1:56:AE:AA:9F` → .84) but Dell never requested a lease
+  - Most likely cause: Dell has static IP from old Deco-era config (192.168.68.x subnet) — won't even attempt DHCP
+  - Fix: Connect display, change network config to DHCP or static 192.168.4.84, verify SSH
   - Unblocks: T-32 (ntfy), T-33 (escalation), T-43 (Loopia creds), T-48 (DNS wildcard)
+
+- [ ] **T-50**: Set up remote management for Dell (future-proofing)
+  - Options evaluated: JetKVM (~$70 plug-and-play), PiKVM DIY V2 (Pi 4 + capture dongle ~$60), serial console via SHANNON (~$5)
+  - Pi 3B+ not suitable (V1 legacy path requires Arduino for HID)
+  - Low priority — DHCP reservation + VPN access should prevent most lockout scenarios
+  - Consider after Dell is back on network
 
 ---
 
