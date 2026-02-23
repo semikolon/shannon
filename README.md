@@ -165,6 +165,7 @@ Default paths (on SHANNON):
 - dnsmasq config: `/etc/dnsmasq.conf`
 - Custom DNS: `/etc/dnsmasq.d/custom.conf`
 - DHCP leases: `/var/lib/misc/dnsmasq.leases`
+- SSH hardening: `/etc/ssh/sshd_config.d/hardening.conf` (key-only, LAN+VPN listen)
 - nftables rules: managed by CrowdSec bouncer + WireGuard PostUp/PostDown
 - WireGuard: `/etc/wireguard/wg0.conf`, peer configs in `/etc/wireguard/peers/`
 - AdGuard Home: `/opt/AdGuardHome/AdGuardHome.yaml`

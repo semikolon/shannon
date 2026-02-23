@@ -260,3 +260,6 @@ Before marking Phase 2 complete:
 - **CrowdSec plugin naming**: Debian-packaged plugins in `/usr/lib/crowdsec/plugins/` named `http` instead of `notification-http`. Required manual rename.
 - **Cargo PATH on SHANNON**: Non-interactive SSH doesn't source `.cargo/env`. Use `source /root/.cargo/env && cargo build` for builds.
 - **WireGuard key parsing**: Base64 keys end with `=` — can't use `split('=')` for config parsing. Use `find('=')` position + slice.
+- **SSH hardened** (Feb 23): Password auth disabled + listen restricted to LAN+VPN only. Root had a password set but zero password logins ever occurred. Config: `/etc/ssh/sshd_config.d/hardening.conf`.
+- **Gemini billing** (Feb 23): Google AI billing enabled. `GEMINI_MODEL=gemini-3.1-pro-preview` active. First analysis ran successfully (severity yellow, SSH brute-force + CrowdSec auto-recovery).
+- **Log collection enriched** (Feb 23): `collect_logs.sh` now includes service states, restart history, system resources (RAM/load/temp/disk). Gives LLM context to distinguish crashes from self-healing.

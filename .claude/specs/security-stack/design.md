@@ -433,7 +433,7 @@ Paste this into Claude Code to analyze the attack pattern and decide on permanen
 - **AdGuard admin**: Password-protect web UI, bind to localhost or LAN only
 - **CrowdSec API**: Local only, no external exposure
 - **WireGuard keys**: Stored in `/etc/wireguard/` with 600 permissions
-- **SSH fallback**: IP-based access (192.168.4.1) always works, independent of DNS
+- **SSH hardened** (Feb 23, 2026): Password auth disabled, listen restricted to LAN (192.168.4.1) + VPN (10.0.0.1) only. Public internet cannot reach SSH. Config: `/etc/ssh/sshd_config.d/hardening.conf`
 
 ---
 
