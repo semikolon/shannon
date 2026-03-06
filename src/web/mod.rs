@@ -169,11 +169,55 @@ fn collect_dashboard_data() -> DashboardData {
     })
     .unwrap_or_default();
 
-    // Merge: use digest entries (richer) + fill gaps with triage log
-    let mut all_security = recent_security;
-    // Only add triage entries whose timestamps aren't already in digest
-    let digest_timestamps: std::collections::HashSet<&str> = all_security.iter().map(|s| s.timestamp.as_str()).collect();
-    triage_summaries.retain(|s| !digest_timestamps.contains(s.timestamp.as_str()));
+    // Also read daily analysis JSON files (last 7 days)
+    let daily_analyses = execute_shell(
+        "ls -t /var/log/shannon-security-analyses/????-??-??.json 2>/dev/null | head -7 | while read f; do echo \"$f\"; cat \"$f\"; echo; done"
+    )
+    .ok()
+    .map(|o| {
+        let text = String::from_utf8_lossy(&o.stdout).to_string();
+        let mut results = Vec::new();
+        let mut lines = text.lines().peekable();
+        while let Some(line) = lines.next() {
+            if line.ends_with(".json") {
+                // Extract date from filename: .../2026-03-06.json
+                let date = line.rsplit('/').next().unwrap_or("").trim_end_matches(".json");
+                let ts = format!("{}T06:00:00+00:00", date);
+                // Collect JSON lines until empty line or next .json
+                let mut json_str = String::new();
+                while let Some(jline) = lines.peek() {
+                    if jline.is_empty() || jline.ends_with(".json") { break; }
+                    json_str.push_str(lines.next().unwrap());
+                }
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&json_str) {
+                    let severity = parsed.get("severity").and_then(|v| v.as_str()).unwrap_or("green");
+                    let category = match severity {
+                        "red" => "critical",
+                        "yellow" => "warning",
+                        _ => "clear",
+                    };
+                    results.push(SecurityFinding {
+                        timestamp: ts,
+                        category: format!("daily-{}", category),
+                        summary: format!("[Daily] {}", parsed.get("summary").and_then(|v| v.as_str()).unwrap_or("No summary")),
+                        findings: parsed.get("recommendations")
+                            .and_then(|v| v.as_array())
+                            .map(|a| a.iter().filter_map(|f| f.as_str().map(String::from)).collect())
+                            .unwrap_or_default(),
+                    });
+                }
+            }
+        }
+        results
+    })
+    .unwrap_or_default();
+
+    // Merge: daily analyses + digest entries (richer) + triage log
+    let mut all_security = daily_analyses;
+    all_security.extend(recent_security);
+    // Only add triage entries whose timestamps aren't already covered
+    let existing_timestamps: std::collections::HashSet<&str> = all_security.iter().map(|s| s.timestamp.as_str()).collect();
+    triage_summaries.retain(|s| !existing_timestamps.contains(s.timestamp.as_str()));
     all_security.extend(triage_summaries);
     all_security.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
     all_security.truncate(10); // Keep last 10
@@ -226,7 +270,8 @@ fn render_dashboard(data: &DashboardData) -> String {
         html.push_str(r#"<p class="service-desc" style="margin-bottom: 8px"><strong>Recent Findings</strong></p>"#);
         for finding in &data.recent_security {
             let cat_color = match finding.category.as_str() {
-                "critical" => "var(--bad)",
+                "critical" | "daily-critical" => "var(--bad)",
+                "daily-warning" => "var(--warn)",
                 "normal" => "var(--accent)",
                 _ => "var(--ok)",
             };
