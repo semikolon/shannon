@@ -4,7 +4,7 @@
 //! Designed for LAN-only access (http://internet.local:8080).
 
 use axum::{
-    extract::Query,
+    extract::{Path, Query},
     http::{header, StatusCode},
     response::{Html, IntoResponse},
     routing::get,
@@ -21,7 +21,8 @@ pub async fn serve(bind: &str, port: u16) -> anyhow::Result<()> {
     let app = Router::new()
         .route("/", get(dashboard))
         .route("/api/status", get(api_status))
-        .route("/api/action", get(api_action));
+        .route("/api/action", get(api_action))
+        .route("/fonts/{filename}", get(serve_font));
 
     let addr: SocketAddr = format!("{}:{}", bind, port).parse()?;
     info!("SHANNON dashboard at http://{}:{}", bind, port);
@@ -141,6 +142,34 @@ fn render_dashboard(data: &DashboardData) -> String {
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <title>Sarpetorp Internet</title>
 <style>
+@font-face {{
+    font-family: 'CircularStd';
+    src: url('/fonts/CircularStd-Book.otf') format('opentype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}}
+@font-face {{
+    font-family: 'CircularStd';
+    src: url('/fonts/CircularStd-Medium.otf') format('opentype');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}}
+@font-face {{
+    font-family: 'CircularStd';
+    src: url('/fonts/CircularStd-Bold.otf') format('opentype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}}
+@font-face {{
+    font-family: 'CircularStd';
+    src: url('/fonts/CircularStd-Black.otf') format('opentype');
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}}
 :root {{
     --bg: #0f1419;
     --surface: #1a2029;
@@ -156,21 +185,22 @@ fn render_dashboard(data: &DashboardData) -> String {
 }}
 * {{ box-sizing: border-box; margin: 0; padding: 0; }}
 body {{
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-family: 'CircularStd', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
-    padding: 16px;
+    padding: 32px;
     padding-bottom: 100px;
+    font-size: 2rem;
 }}
 h1 {{
-    font-size: 1.6rem;
+    font-size: 3.2rem;
     font-weight: 700;
-    margin-bottom: 4px;
+    margin-bottom: 8px;
 }}
 .subtitle {{
     color: var(--text2);
-    font-size: 0.9rem;
+    font-size: 1.8rem;
     margin-bottom: 20px;
 }}
 .grid {{
@@ -189,19 +219,19 @@ h1 {{
     text-align: center;
 }}
 .stat-value {{
-    font-size: 1.8rem;
+    font-size: 3.6rem;
     font-weight: 700;
     line-height: 1.2;
 }}
 .stat-label {{
-    font-size: 0.75rem;
+    font-size: 1.5rem;
     color: var(--text2);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-top: 4px;
 }}
 .section-title {{
-    font-size: 1.1rem;
+    font-size: 2.2rem;
     font-weight: 600;
     margin: 24px 0 12px;
     display: flex;
@@ -218,10 +248,10 @@ h1 {{
     margin-bottom: 8px;
 }}
 .service-dot {{
-    font-size: 0.9rem;
+    font-size: 1.8rem;
 }}
 .service-badge {{
-    font-size: 0.7rem;
+    font-size: 1.4rem;
     padding: 2px 8px;
     border-radius: 12px;
     margin-left: auto;
@@ -232,7 +262,7 @@ h1 {{
 .status-down {{ color: var(--bad); }}
 .status-down.service-badge {{ background: rgba(231,76,60,0.15); color: var(--bad); }}
 .service-desc {{
-    font-size: 0.85rem;
+    font-size: 1.7rem;
     color: var(--text2);
     line-height: 1.4;
     margin-bottom: 10px;
@@ -246,8 +276,8 @@ h1 {{
     align-items: center;
     justify-content: center;
     gap: 8px;
-    padding: 14px 24px;
-    font-size: 1rem;
+    padding: 20px 32px;
+    font-size: 2rem;
     font-weight: 600;
     border: none;
     border-radius: 12px;
@@ -258,8 +288,8 @@ h1 {{
 }}
 .btn:active {{ transform: scale(0.96); }}
 .btn-sm {{
-    padding: 8px 14px;
-    font-size: 0.8rem;
+    padding: 12px 20px;
+    font-size: 1.6rem;
     border-radius: 8px;
     background: var(--surface2);
     color: var(--text);
@@ -289,8 +319,8 @@ h1 {{
 }}
 .quick-actions .btn {{
     width: 100%;
-    min-height: 60px;
-    font-size: 0.95rem;
+    min-height: 90px;
+    font-size: 1.9rem;
 }}
 .toast {{
     position: fixed;
@@ -302,7 +332,7 @@ h1 {{
     padding: 12px 24px;
     border-radius: 12px;
     border: 1px solid var(--border);
-    font-size: 0.9rem;
+    font-size: 1.8rem;
     z-index: 100;
     opacity: 0;
     transition: opacity 0.3s;
@@ -328,7 +358,7 @@ h1 {{
     border: 1px solid #3d2d6b;
 }}
 .ai-badge {{
-    font-size: 0.65rem;
+    font-size: 1.3rem;
     background: rgba(156,39,176,0.2);
     color: #ce93d8;
     padding: 2px 8px;
@@ -338,7 +368,7 @@ h1 {{
 footer {{
     text-align: center;
     color: var(--text2);
-    font-size: 0.75rem;
+    font-size: 1.5rem;
     margin-top: 30px;
     padding: 20px 0;
 }}
@@ -372,7 +402,7 @@ footer a {{ color: var(--accent); text-decoration: none; }}
 
 <div class="grid">
     <div class="card stat-card">
-        <div class="stat-value" style="font-size:1rem;word-break:break-all">{wan_ip}</div>
+        <div class="stat-value" style="font-size:2rem;word-break:break-all">{wan_ip}</div>
         <div class="stat-label">Public IP</div>
     </div>
     <div class="card stat-card">
@@ -415,7 +445,7 @@ footer a {{ color: var(--accent); text-decoration: none; }}
 
 <div class="section-title">Network Info</div>
 <div class="card">
-    <table style="width:100%; font-size:0.85rem; color: var(--text2)">
+    <table style="width:100%; font-size:1.7rem; color: var(--text2)">
         <tr><td style="padding:4px 0">Router</td><td style="text-align:right">192.168.4.1</td></tr>
         <tr><td style="padding:4px 0">Subnet</td><td style="text-align:right">192.168.4.0/24</td></tr>
         <tr><td style="padding:4px 0">DNS</td><td style="text-align:right">AdGuard Home (local)</td></tr>
@@ -506,6 +536,41 @@ async fn api_status() -> impl IntoResponse {
 struct ActionParams {
     action: String,
     target: Option<String>,
+}
+
+async fn serve_font(Path(filename): Path<String>) -> impl IntoResponse {
+    // Serve fonts from system font directory
+    let font_paths = [
+        "/usr/local/share/fonts",
+        "/root/.local/share/fonts",
+    ];
+
+    for dir in &font_paths {
+        let path = std::path::Path::new(dir).join(&filename);
+        if path.exists() {
+            if let Ok(data) = tokio::fs::read(&path).await {
+                let content_type = if filename.ends_with(".otf") {
+                    "font/otf"
+                } else if filename.ends_with(".ttf") {
+                    "font/ttf"
+                } else if filename.ends_with(".woff2") {
+                    "font/woff2"
+                } else {
+                    "application/octet-stream"
+                };
+                return (
+                    StatusCode::OK,
+                    [
+                        (header::CONTENT_TYPE, content_type),
+                        (header::CACHE_CONTROL, "public, max-age=31536000"),
+                    ],
+                    data,
+                ).into_response();
+            }
+        }
+    }
+
+    (StatusCode::NOT_FOUND, "Font not found").into_response()
 }
 
 async fn api_action(Query(params): Query<ActionParams>) -> impl IntoResponse {
