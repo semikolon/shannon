@@ -9,6 +9,7 @@ mod commands;
 mod location;
 mod notify;
 mod output;
+mod web;
 
 use anyhow::Result;
 use clap::Parser;
@@ -33,6 +34,11 @@ fn main() {
         error!("{:#}", e);
         std::process::exit(1);
     }
+}
+
+#[tokio::main]
+async fn run_web(bind: String, port: u16) -> Result<()> {
+    web::serve(&bind, port).await
 }
 
 fn run(cli: Cli) -> Result<()> {
@@ -86,5 +92,7 @@ fn run(cli: Cli) -> Result<()> {
             DdnsAction::Status => commands::ddns::status(cli.json),
             DdnsAction::Update { force } => commands::ddns::update(force, cli.json),
         },
+
+        Commands::Web { port, bind } => run_web(bind, port),
     }
 }

@@ -66,6 +66,17 @@ pub enum Commands {
         #[command(subcommand)]
         action: DdnsAction,
     },
+
+    /// Start the web dashboard (default: 0.0.0.0:8080)
+    Web {
+        /// Port to listen on
+        #[arg(short, long, default_value = "8080")]
+        port: u16,
+
+        /// Bind address
+        #[arg(short, long, default_value = "0.0.0.0")]
+        bind: String,
+    },
 }
 
 // DNS subcommands
